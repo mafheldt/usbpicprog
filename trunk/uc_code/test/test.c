@@ -21,18 +21,18 @@ int main( int argc, char *argv[] )
 		while( ++argv, --argc > 0 )
 		{
 			if( '0' <= argv[0][0] && argv[0][0] <= '9' )
-				test( (PICTYPE) atoi( argv[0] ) );
+				pictype = (PICTYPE) atoi( argv[0] );
 			else
 			{
 				for( pictype = 0; pictype != UPP_INVALID_PICTYPE; ++pictype )
 					if( strcasecmp( pictypeName[pictype], argv[0] ) == 0 )
 						break;
-				if( pictype == UPP_INVALID_PICTYPE )
+				if( pictype == UPP_INVALID_PICTYPE ) {
 					fprintf( stderr, "Unknown pictype %s\n", argv[0] );
-				else
-					test( pictype );
+					continue;
+				}
 			}
-
+			test( pictype );
 		}
 	}
 }
