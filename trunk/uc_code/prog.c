@@ -1794,7 +1794,7 @@ char read_code(PICFAMILY picfamily, PICTYPE pictype, unsigned long address, unsi
 					configAddress=0xFFF;
 					break;
 			}
-			if(address==configAddress)
+			if(address>=configAddress)
 			{			
 				payload=pic_read_14_bits(6,0x04); //read config memory
 				data[1]=(char)(payload>>8);
