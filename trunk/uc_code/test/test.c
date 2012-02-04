@@ -1,6 +1,9 @@
 #ifdef TEST
+#define test_harness
+#include <stdio.h>
 #include "prog.h"
-#include "test.h"
+#include "prog_lolvl.h"
+//#include "test.h"
 #include <string.h>
 
 extern PICFAMILY picfamily;
@@ -10,9 +13,11 @@ unsigned char set_pictype( PICTYPE pictype );
 void test( PICTYPE pictype );
 int main( int argc, char *argv[] )
 {
-	// very dump interface if there are arguments then pure numbers are interpreted as pictype enums otherwise as a string pictype
+	// very dumb interface if there are arguments then pure numbers are interpreted as pictype enums otherwise as a string pictype
 	// no arguments do all pictypes
 
+//	printf( "devices[UPP_INVALID_PICTYPE].flags.family = %d (%s)\n", devices[UPP_INVALID_PICTYPE].flags.family,
+//			picfamilyName[devices[UPP_INVALID_PICTYPE].flags.family] );
 	if( argc <= 1 )
 		for( pictype = 0; pictype < UPP_INVALID_PICTYPE; ++pictype )
 			test( pictype );
@@ -36,10 +41,14 @@ int main( int argc, char *argv[] )
 		}
 	}
 }
-#define FIRST 1
-#define LAST 2
 
-void test( PICTYPE pictype )
+#undef BLOCKTYPE_FIRST
+#undef BLOCKTYPE_LAST
+#undef BLOCKTYPE_CONFIG
+#define BLOCKTYPE_FIRST 1
+#define BLOCKTYPE_LAST 2
+#define BLOCKTYPE_CONFIG 4
+void test( PICTYPE pt )
 {
 	int i;
 	unsigned char result;
@@ -47,6 +56,7 @@ void test( PICTYPE pictype )
 	unsigned char data[1024];
 	char blocksize;
 
+	pictype = pt;
 	if( pictype >= UPP_INVALID_PICTYPE )
 	{
 		fprintf( stderr, "Unknown pictype %d\n", pictype );
@@ -66,31 +76,31 @@ void test( PICTYPE pictype )
 	result = bulk_erase( picfamily, pictype, 0 );
 	printf( " returns( %d )\n", result );
 
-	printf( ">>>>>> write_code( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0L, 32, FIRST );
-	result = write_code( picfamily, pictype, 0x00, data, 32, FIRST );
+	printf( ">>>>>> write_code( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0L, 32, BLOCKTYPE_FIRST );
+	result = write_code( picfamily, pictype, 0x00, data, 32, BLOCKTYPE_FIRST );
 	printf( " returns( %d )\n", result );
-	printf( ">>>>>> write_code( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0x20L, 32, 0 );
-	result = write_code( picfamily, pictype, 0x20, data, 32, 0 );
-	printf( " returns( %d )\n", result );
-
-
-	printf( ">>>>>> write_data( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0L, 9, FIRST );
-	result = write_data( picfamily, pictype, address, data, 9, FIRST );
+	printf( ">>>>>> write_code( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 256L-32, 32, 0 );
+	result = write_code( picfamily, pictype, 256L-32, data, 32, 0 );
 	printf( " returns( %d )\n", result );
 
-	printf( ">>>>>> write_config_bits( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0x2000L, 3, FIRST );
-	result = write_config_bits( picfamily, pictype, 0x2000, data, 3, FIRST );
+
+	printf( ">>>>>> write_data( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0L, 9, BLOCKTYPE_FIRST );
+	result = write_data( picfamily, pictype, address, data, 9, BLOCKTYPE_FIRST );
 	printf( " returns( %d )\n", result );
 
-	printf( ">>>>>> read_code( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0L, 3, FIRST );
-	result = read_code( picfamily, pictype, 0, data, 3, FIRST );
-	printf( " returns( %d )\n", result );
-	printf( ">>>>>> read_code( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0xF80000L, 3, 0 );
-	result = read_code( picfamily, pictype, 0xF80000, data, 3, 0 );
+	printf( ">>>>>> write_config_bits( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0x2000L, 3, BLOCKTYPE_FIRST );
+	result = write_config_bits( picfamily, pictype, 0x2000, data, 3, BLOCKTYPE_FIRST );
 	printf( " returns( %d )\n", result );
 
-	printf( ">>>>>>  read_data( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0x02L, 9, FIRST );
-	result = read_data( picfamily, pictype, 2, data, 9, FIRST );
+	printf( ">>>>>> read_code( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0L, 3, BLOCKTYPE_FIRST );
+	result = read_code( picfamily, pictype, 0, data, 3, BLOCKTYPE_FIRST );
+	printf( " returns( %d )\n", result );
+	printf( ">>>>>> read_code( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0xF80000L, 3, BLOCKTYPE_FIRST|BLOCKTYPE_CONFIG );
+	result = read_code( picfamily, pictype, 0xF80000, data, picfamily==PIC10? 1: 3, (picfamily!=PIC16 ?BLOCKTYPE_FIRST: 0)|BLOCKTYPE_CONFIG );
+	printf( " returns( %d )\n", result );
+
+	printf( ">>>>>>  read_data( %s, %s, %04lX, data, %02X, %X )\n", picfamilyName[picfamily], pictypeName[pictype], 0x02L, 9, BLOCKTYPE_FIRST );
+	result = read_data( picfamily, pictype, 2, data, 9, BLOCKTYPE_FIRST );
 	printf( " returns( %d )\n", result );
 
 	printf("done\n");
@@ -100,6 +110,25 @@ void test( PICTYPE pictype )
 
 unsigned char set_pictype( PICTYPE pictype )
 {
+#ifndef test_harness
+	int i;
+
+	for( i = 0; i < UPP_INVALID_PICTYPE; i++ ) {
+		if( devices[i].flags.type == pictype ) {
+			currDevice = devices[i];
+			break;
+		}
+	}
+	if( pictype == UPP_INVALID_PICTYPE )
+	{
+		fprintf( stderr, "Unknown pictype %d\n", pictype );
+		return;
+	}
+	picfamily = currDevice.flags.family;
+
+	return( 1 );
+}
+#else
 	switch(pictype)
 	{
 	        case P12F508:
@@ -136,7 +165,7 @@ unsigned char set_pictype( PICTYPE pictype )
 		case P16F182X:	// added
 		case P17C7XX:picfamily=PIC16;break;
 		case P18F2XXX:
-		case P18FXXK20:			
+		case P18FXXK20:
 		case P18F4XK22:
 		case P18LF4XK22:
 		case P18FXX2:
@@ -171,6 +200,7 @@ unsigned char set_pictype( PICTYPE pictype )
 	}
 	return 1;
 }
+#endif
 #else
 // needs at least 1 line for MCC18
 extern unsigned char timerRunning;
