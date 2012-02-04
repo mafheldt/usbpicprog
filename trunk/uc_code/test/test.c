@@ -50,7 +50,6 @@ int main( int argc, char *argv[] )
 #define BLOCKTYPE_CONFIG 4
 void test( PICTYPE pt )
 {
-	int i;
 	unsigned char result;
 	unsigned long address;
 	unsigned char data[1024];
@@ -66,6 +65,8 @@ void test( PICTYPE pt )
 	blocksize = 1;
 
 	memset( data, 0, sizeof( data ) );
+
+#undef set_vdd_vpp		// call the real one for this test
 
 	set_pictype(pictype);
 	printf( " Type %s, Family %s\n", pictypeName[pictype], picfamilyName[picfamily] );

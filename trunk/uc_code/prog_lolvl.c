@@ -30,14 +30,18 @@
 #include "io_cfg.h"             // I/O pin mapping
 #include "prog_lolvl.h"
 
-#ifndef TEST
+#ifdef TEST
+#undef I2C_delay
+#undef set_vdd_vpp
+#endif
+
 void I2C_delay()
 {
 	char i;
 	for(i=0;i<10;i++)continue;
 }
-#endif
-void set_vdd_vpp(PICTYPE pictype, PICFAMILY picfamily,char level)
+
+void set_vdd_vpp( PICTYPE pictype, PICFAMILY picfamily, char level )
 {
 	unsigned int i;
 	if(level==1)
