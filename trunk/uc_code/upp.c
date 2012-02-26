@@ -66,22 +66,35 @@ void setLeds( char n );
 void InitAdc( void )
 {
 	ADCON0 = 0x09; //Enable AD converter to Channel AN2 (measure VPP);
-	ADCON2 = 0xA6; //0x88		//Right justified, 2TAD, Fosc/2
-	ADCON1 = 0x0F; //All signals to Digital
+	ADCON2 = 0x3E; //0xA6; //0x88		//Right justified, 2TAD, Fosc/2
+	ADCON1 = 0x0C; //An0-An2 => Ananlog
 	TRISAbits.TRISA2 = 1; //Input;
+	PIE1bits.ADIE = 1;//enable timer1 interrupt
+	PIR1bits.ADIF = 0;//clear interrupt flag
+	IPR1bits.ADIP = 1;//high priority interrupt
 }
 
 void ReadAdc( unsigned char* data )
 {
+#if 1
+	extern unsigned char VppPWMon;
+
+	while( ADCON0bits.GO )
+		continue;
+	data[0] = ADRES >> 6;
+	data[1] = ADRESH >> 6;
+	data[2] = VppPWMon;
+#else
 	char i;
 	i = 0;
-	ADCON1 = 0x0C; //channel AN2 .. AN0 to analog
+	ADCON1 = 0x0C;	//channel AN2 .. AN0 to analog
 	ADCON0bits.GO = 1;
 	while( ADCON0bits.GO )
 		continue;//||(i++<100))continue;
 	data[0] = ADRESL;
 	data[1] = ADRESH;
-	ADCON1 = 0xFF; //back to digital...
+	ADCON1 = 0x0C;	//back to digital...
+#endif
 }
 
 void UserInit( void )
@@ -93,19 +106,19 @@ void UserInit( void )
 	Pump1tris = 0;
 	Pump2tris = 0;
 
-	TRISVPP = 0; //output
-	TRISVPP_RST = 0; //output
+	TRISVPP = 0;	//output
+	TRISVPP_RST = 0;//output
 	TRISPGD = 0;
 	TRISPGC = 0;
 	TRISVDD = 0;
 	TRISVPP_RUN = 0;
-	VPP_RUN = 0; //run = off
+	VPP_RUN = 0;	//run = off
 	PGD_LOW = 0;	// always set to 0 -except for I2C EEproms
-	TRISPGD_LOW = 1; //LV devices disabled, high impedance / input
+	TRISPGD_LOW = 1;//LV devices disabled, high impedance / input
 	PGC_LOW = 0;	// always set to 0
-	TRISPGC_LOW = 1; //LV devices disabled, high impedance / input
-	VPP = 1; //VPP is low (inverted)
-	VPP_RST = 0; //No hard reset (inverted
+	TRISPGC_LOW = 1;//LV devices disabled, high impedance / input
+	VPP = 1;	//VPP is low (inverted)
+	VPP_RST = 0;	//No hard reset (inverted
 	PGD = 0;
 	PGC = 0;
 	INTCON2bits.RBPU = 1; //disable Portb pullup resistors
@@ -115,7 +128,7 @@ void UserInit( void )
 
 void timer1Init( void )
 {
-	INTCON |= 0xC0; //global and periferal interrupts enabled
+	INTCON |= 0xC0; //global and peripheral interrupts enabled
 	PIE1bits.TMR1IE = 1;//enable timer1 interrupt
 	PIR1bits.TMR1IF = 0;//clear interrupt flag
 	IPR1bits.TMR1IP = 1;//high priority interrupt
@@ -126,10 +139,11 @@ void timer1Init( void )
 
 void timer0Init( void )
 {
-	INTCON |= 0xE0; //global, periferal and t0ie bits enabled
-	INTCONbits.TMR0IF = 0; //clear interrupt flag
-	TMR0L = 68;//TMR0L_PRESET;
-	T0CON = 0xC3; //prescaler div by 1:16
+	INTCON |= 0xE0; //global, peripheral and t0ie bits enabled
+//	INTCONbits.TMR0IF = 0; //clear interrupt flag
+//	TMR0L = 68;//TMR0L_PRESET;
+	INTCON2bits.TMR0IP = 1;//high priority interrupt
+	T0CON = 0xC8; // no prescaler //prescaler div by 1:16
 }
 
 void setLeds( char n )
@@ -369,7 +383,7 @@ void ProcessIO( void )
 				break;
 			case SUBCMD_PIN_VPP_VOLTAGE:
 				ReadAdc( output_buffer );
-				counter = 2;
+				counter = 3;
 				break;
 			default:
 				output_buffer[0] = 3;

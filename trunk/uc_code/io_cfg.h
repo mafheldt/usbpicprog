@@ -155,7 +155,7 @@
 #define Pump2 LATAbits.LATA1
 #define Pump1tris TRISAbits.TRISA0
 #define Pump2tris TRISAbits.TRISA1
-#define TMR1_PERIOD 1000 
+#define TMR1_PERIOD 200
 #define CLOCK_FREQ 48
 #define TMR1_PRESET (65535-((CLOCK_FREQ/4)*TMR1_PERIOD))
 #define TMR1H_PRESET ((TMR1_PRESET & 0xFF00)>>8)
