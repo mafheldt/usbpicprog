@@ -42,8 +42,10 @@ void interrupt_at_low_vector( void )
  * Side Effects:
  * Overview:
  *****************************************************************************/
-unsigned char VppVolt;
-unsigned char VppPWMon;
+unsigned int VppVolt;
+unsigned char History[64];
+unsigned char Histcnt = 0;
+unsigned char VppPWMon = 0;
 int VppTarget;
 
 #ifndef SDCC
@@ -65,20 +67,35 @@ void high_isr(void) interrupt 2
 		static int on;
 
 		PIR1bits.ADIF = 0;
-		VppVolt = ADRESH;
+		VppVolt = ADRES;
+
+		if( Histcnt >= 60 )
+			Histcnt = 0;
+		History[Histcnt++] = ADRESL;
+		History[Histcnt++] = VppPWMon;
 
 		if( timerRunning && --timerCnt <= 0 )
 			timerRunning = 0;
+#if 1
+		{
+#else
 						// 13.0V 831	208
 						// 11.0V 700	175
 						//  8.5V 556	139	15
 						//  5.0V 325	 81	 8
-						//  3.3V 216	 27	 8
-#define TARGET 139
-		if( VppVolt > TARGET + 2 )
+						//  3.3V 216	 54	 8
+#define TARGET 320
+
+		if( VppVolt > TARGET + 20 ) {
+			if( VppPWMon > 10 )
+				VppPWMon -= 10;
+			else
+				VppPWMon = 0;
+		}
+		else if( VppVolt > TARGET + 2 )
 		{
-//			if( VppPWMon )
-				VppPWMon >>= 1;
+			if( VppPWMon )
+				--VppPWMon;
 		}
 		else
 		{
@@ -91,18 +108,39 @@ void high_isr(void) interrupt 2
 				if( ++VppPWMon == 0 )
 					VppPWMon = 255;
 
-			Pump1 = 0;
-			TMR0L = 255-VppPWMon;		// timer0
+#if 0
+			TMR0L = 255-(VppPWMon>>4);		// timer0
 			INTCONbits.TMR0IF = 0;
 			T0CON = 0xC0; //prescaler div by 1:16
 			Pump2 = 1;
+#endif
+#endif
+			if( VppPWMon > 100 )
+			{					// (101-82) * 8 approx 100/2 * 3
+				TMR0L = 84 - VppPWMon;		// timer0 VppPWMon-82 counts
+				INTCONbits.TMR0IF = 0;
+				T0CON = 0xC2; //prescaler div by 1:8
+				Pump2 = 1;
+				Pump1 = 0;
+			}
+			else
+			{
+				unsigned char i;
+					
+				i = (VppPWMon>>1) + 1;
+				Pump1 = 0;
+				Pump2 = 1;
+				while( --i );
+				Pump2 = 0;
+				Pump1 = 1;
+			}
 		}
 
 	}
-	if( INTCONbits.TMR0IF )
+	else if( INTCONbits.TMR0IF )
 	{
-		Pump1 = 1;
 		Pump2 = 0;
+		Pump1 = 1;
 		T0CON = 0;
 		INTCONbits.TMR0IF = 0;
 	}
@@ -135,7 +173,7 @@ void startTimerMs( unsigned int cnt )
 {
 	timerRunning = 0; // no surprises from timer interrupt
 	if( cnt ) {
-		timerCnt = cnt*5 + 1;
+		timerCnt = cnt*MSCOUNT + 1;
 		timerRunning = 1;
 	}
 }

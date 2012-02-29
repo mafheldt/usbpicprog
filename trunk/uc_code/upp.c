@@ -66,8 +66,8 @@ void setLeds( char n );
 void InitAdc( void )
 {
 	ADCON0 = 0x09; //Enable AD converter to Channel AN2 (measure VPP);
-	ADCON2 = 0x3E; //0xA6; //0x88		//Right justified, 2TAD, Fosc/2
-	ADCON1 = 0x0C; //An0-An2 => Ananlog
+	ADCON2 = 0xBE; //0xA6; //0x88		//Right justified, 2TAD, Fosc/2
+	ADCON1 = 0x0C; //An0-An2 => Analog
 	TRISAbits.TRISA2 = 1; //Input;
 	PIE1bits.ADIE = 1;//enable timer1 interrupt
 	PIR1bits.ADIF = 0;//clear interrupt flag
@@ -81,8 +81,13 @@ void ReadAdc( unsigned char* data )
 
 	while( ADCON0bits.GO )
 		continue;
+#if 1
+	data[0] = ADRESL;
+	data[1] = ADRESH;
+#else
 	data[0] = ADRES >> 6;
 	data[1] = ADRESH >> 6;
+#endif
 	data[2] = VppPWMon;
 #else
 	char i;
@@ -382,8 +387,14 @@ void ProcessIO( void )
 				output_buffer[0] = PIN_STATE_FLOAT;
 				break;
 			case SUBCMD_PIN_VPP_VOLTAGE:
+			{
+				extern unsigned char History[];
+				extern unsigned char VppPWMon;
 				ReadAdc( output_buffer );
-				counter = 3;
+				memcpy( output_buffer+3, History, 60 );
+				counter = 63;
+				VppPWMon++;
+			}
 				break;
 			default:
 				output_buffer[0] = 3;
