@@ -24,7 +24,8 @@
  * This file also generates the majority of the device table
  *
  */
-
+// VPP voltage choices are 3V(nominally3.1), 5V(nominally 4.8), 8V (nominally 8.4), 11V (nominally 11), 13V (as much as it can)
+//
 //    Pictype,		picfamily,5V,		enter_ISCP,	bulk_erase,	read_code,	read_data,	write_code,	write_data,	write_config_bits )
 LIST( dsP30F,		dsPIC30,5V,		dsPIC30,	dsP30F,		dsPIC30,	dsPIC30,	dsP30F,		dsPIC30,	dsP30F )
 LIST( dsP30F_LV,	dsPIC30,3V,		dsPIC30,	dsP30F,		dsPIC30,	dsPIC30,	dsP30F,		dsPIC30,	dsP30F )

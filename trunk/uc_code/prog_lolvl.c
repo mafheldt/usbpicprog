@@ -40,6 +40,87 @@
 #endif
 #define I2C_delay()	Delay10TCYx(2)		// approx 2x 1.3us min
 
+void set_vpp( unsigned char volt ) {
+	static int table[15];
+}
+
+int test_vpp( int i ) {
+	unsigned char cnt;
+
+	cnt = 0;
+	Pump1 = 1;
+	Pump2 = 1;
+	VPP_RSTon();
+	VPPon();
+	Pump1 = 1;
+	Pump2 = 1;
+	DelayMs(40);
+	VPPoff();
+	VPP_RSToff();
+	while( i-- )
+	{
+		cnt = 32;
+		Pump1 = 0;
+		Pump2 = 1;
+		while( --cnt )
+			;
+		Pump2 = 0;
+		Pump1 = 1;
+		cnt = 32;
+		while( --cnt )
+			;
+	}
+
+	Pump2 = 1;		// empty Pump2
+	VPPon();
+	while( --cnt )
+		;
+	while( --cnt )
+		;
+	while( --cnt )
+		;
+	ADCON0bits.GO = 1;
+	while( ADCON0bits.GO )
+		continue;
+	return( ADRES );
+}
+
+int test1_vpp( int v ) {
+	unsigned char cnt;
+	int i;
+
+	cnt = 0;
+	i = 0;
+	Pump1 = 1;
+	Pump2 = 1;
+	VPP_RSTon();
+	VPPon();
+	DelayMs(40);
+	VPPoff();
+	VPP_RSToff();
+	do
+	{
+		++i;
+		Pump1 = 0;
+		Pump2 = 1;
+		cnt = 32;
+		while( --cnt )
+			;
+		Pump1 = 1;
+		Pump2 = 0;
+		cnt = 32;
+		while( --cnt )
+			;
+	VPPon();
+	while( --cnt )		// not quite long enough - but within 2 counts
+		;
+	ADCON0bits.GO = 1;
+	while( ADCON0bits.GO )
+		continue;
+	} while( ADRES < v );
+	return( i );
+}
+
 void set_vdd_vpp( PICTYPE pictype, PICFAMILY picfamily, char level )
 {
 	if( level == 0 )

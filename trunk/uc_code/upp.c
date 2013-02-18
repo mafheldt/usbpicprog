@@ -41,12 +41,25 @@
 #pragma udata
 #endif
 byte old_sw2, old_sw3;
+struct {
+	int Target;
+	int Startup;
+	unsigned char InitPWMon;
+} Vpp[5] = { 	{ 202, 0, 255 },
+		{ 313, 0, 255 },
+		{ 549, 0, 255 },
+		{ 720, 0, 255 },
+		{ 1023, 1000, 255 }
+	};
+
 
 // FIXME: why 0x100?
-#pragma udata BUFFERS=0x100
+//#pragma udata BUFFERS=0x100
 
 byte input_buffer[USBGEN_EP_SIZE];
 byte output_buffer[USBGEN_EP_SIZE];
+#pragma udata BUFFERS=0x100
+byte History[128];
 #pragma udata
 
 rom char upp_version[] = {
@@ -129,6 +142,58 @@ void UserInit( void )
 	INTCON2bits.RBPU = 1; //disable Portb pullup resistors
 	timer1Init();
 	timer0Init();
+	{
+#define OFFSET 14
+		int i, test_vpp(int);
+
+		mLED_3_Toggle();
+		i = 10;
+		// 3.1 V
+		while( (i += 10) && test_vpp(i) < Vpp[VPP_3_3V].Target+OFFSET )
+			;
+		Vpp[VPP_3_3V].Startup = i-10;
+		// 4.8 V
+		while( (i += 10) && test_vpp(i) < Vpp[VPP_5V].Target+OFFSET )
+			;
+		Vpp[VPP_5V].Startup = i-10;
+		// 8.4V
+		while( (i += 10) && test_vpp(i) < Vpp[VPP_8_5V].Target+OFFSET )
+			;
+		Vpp[VPP_8_5V].Startup = i-10;
+		mLED_3_Toggle();
+		// 11.0 V
+		while( (i += 10) && test_vpp(i) < Vpp[VPP_11V].Target+OFFSET )
+			;
+		Vpp[VPP_11V].Startup = i-10;
+		mLED_3_Toggle();
+
+		// 3.1 V
+		i = Vpp[VPP_3_3V].Startup;
+		while( ++i && test_vpp(i) < Vpp[VPP_3_3V].Target+OFFSET )
+			;
+		Vpp[VPP_3_3V].Startup = i-1;
+		mLED_3_Toggle();
+
+		// 4.8 V
+		i = Vpp[VPP_5V].Startup;
+		while( ++i && test_vpp(i) < Vpp[VPP_5V].Target+OFFSET )
+			;
+		Vpp[VPP_5V].Startup = i-1;
+		mLED_3_Toggle();
+
+		// 8.4V
+		i = Vpp[VPP_8_5V].Startup;
+		while( ++i && test_vpp(i) < Vpp[VPP_8_5V].Target+OFFSET )
+			;
+		Vpp[VPP_8_5V].Startup = i-1;
+		mLED_3_Toggle();
+
+		// 11.0 V
+		i = Vpp[VPP_11V].Startup;
+		while( ++i && test_vpp(i) < Vpp[VPP_11V].Target+OFFSET )
+			;
+		Vpp[VPP_11V].Startup = i-1;
+	}
 }//end UserInit
 
 void timer1Init( void )
@@ -388,12 +453,40 @@ void ProcessIO( void )
 				break;
 			case SUBCMD_PIN_VPP_VOLTAGE:
 			{
-				extern unsigned char History[];
+#if 1
 				extern unsigned char VppPWMon;
+				static unsigned char half = 0;
+				half = !half;
 				ReadAdc( output_buffer );
-				memcpy( output_buffer+3, History, 60 );
-				counter = 63;
-				VppPWMon++;
+				output_buffer[3] = half? 0: 1;
+				output_buffer[4] = History[0];
+				memcpy( output_buffer+5, half? &History[1]: &History[60], 59 );
+				History[0] = 0;
+				counter = 64;
+#else
+				extern int test_vpp( int i );
+				static int i = 0;
+
+				i = 0;
+				((int *) output_buffer)[i++] = test_vpp( Vpp[0] );
+				((int *) output_buffer)[i++] = Vpp[0];
+				((int *) output_buffer)[i++] = Vpp[1];
+				((int *) output_buffer)[i++] = Vpp[2];
+				((int *) output_buffer)[i++] = Vpp[3];
+				i = 8;
+#if 1
+				((int *) output_buffer)[i++] = test_vpp( Vpp[0] );
+				((int *) output_buffer)[i++] = test_vpp( Vpp[1] );
+				((int *) output_buffer)[i++] = test_vpp( Vpp[2] );
+				((int *) output_buffer)[i++] = test_vpp( Vpp[3] );
+				((int *) output_buffer)[i++] = test_vpp( Vpp[0]+1 );
+				((int *) output_buffer)[i++] = test_vpp( Vpp[1]+1 );
+				((int *) output_buffer)[i++] = test_vpp( Vpp[2]+1 );
+				((int *) output_buffer)[i++] = test_vpp( Vpp[3]+1 );
+#endif
+
+				counter = 64;
+#endif
 			}
 				break;
 			default:
@@ -481,7 +574,42 @@ void ProcessIO( void )
 				}
 				break;
 			case SUBCMD_PIN_VPP:
+			{
+				extern unsigned char Histcnt;
+				extern unsigned char VppPWMon;
+				extern int VppTarget;
+				static int volt = 0;
+
+				Histcnt = 0;
 				switch( input_buffer[2] ) {
+				case PIN_STATE_0V:
+					VPP = 1;
+					VPP_RST = 1;
+					VPP_RUN = 0;
+					output_buffer[0] = 1;//ok
+					break;
+				case PIN_STATE_5V:
+					VPP = 1;
+					VPP_RST = 0;
+					VPP_RUN = 1;
+					output_buffer[0] = 1;//ok
+					break;
+				case PIN_STATE_12V:
+					Histcnt = 250;
+					History[1] = test_vpp( Vpp[volt].Startup );
+					Histcnt = 2;
+					VppTarget = Vpp[volt].Target;
+					VppPWMon = Vpp[volt].InitPWMon;
+					History[0] = 0;
+					output_buffer[0] = 1;//ok
+					break;
+				case PIN_STATE_FLOAT:
+					Histcnt = 0;
+					VppTarget = 0;
+					volt = ++volt % 4;
+					output_buffer[0] = 1;//ok
+					break;
+#if 0
 				case PIN_STATE_0V:
 					VPP = 1;
 					VPP_RST = 1;
@@ -506,11 +634,13 @@ void ProcessIO( void )
 					VPP_RUN = 0;
 					output_buffer[0] = 1;//ok
 					break;
+#endif
 				default:
 					output_buffer[0] = 3;
 					break;
 				}
 				break;
+			}
 			default:
 				output_buffer[0] = 3;
 			}

@@ -43,7 +43,7 @@ void interrupt_at_low_vector( void )
  * Overview:
  *****************************************************************************/
 unsigned int VppVolt;
-unsigned char History[64];
+extern byte History[];
 unsigned char Histcnt = 0;
 unsigned char VppPWMon = 0;
 int VppTarget;
@@ -57,6 +57,8 @@ void high_isr(void) interrupt 2
 {
 	if( PIR1bits.TMR1IF )
 	{
+		if( timerRunning && --timerCnt <= 0 )
+			timerRunning = 0;
 		ADCON0bits.GO = 1;
 		TMR1H = TMR1H_PRESET;		//reset timer1
 		TMR1L = TMR1L_PRESET;
@@ -69,14 +71,15 @@ void high_isr(void) interrupt 2
 		PIR1bits.ADIF = 0;
 		VppVolt = ADRES;
 
-		if( Histcnt >= 60 )
-			Histcnt = 0;
-		History[Histcnt++] = ADRESL;
-		History[Histcnt++] = VppPWMon;
+		if( Histcnt < 119 )
+		{
+			History[Histcnt++] = ADRESL;
+//			History[Histcnt++] = VppPWMon;
+		}
+		else if( Histcnt == 119 )
+			History[Histcnt++] = VppPWMon;
 
-		if( timerRunning && --timerCnt <= 0 )
-			timerRunning = 0;
-#if 1
+#if 0
 		{
 #else
 						// 13.0V 831	208
@@ -84,7 +87,7 @@ void high_isr(void) interrupt 2
 						//  8.5V 556	139	15
 						//  5.0V 325	 81	 8
 						//  3.3V 216	 54	 8
-#define TARGET 320
+#define TARGET VppTarget // 320
 
 		if( VppVolt > TARGET + 20 ) {
 			if( VppPWMon > 10 )
@@ -108,32 +111,30 @@ void high_isr(void) interrupt 2
 				if( ++VppPWMon == 0 )
 					VppPWMon = 255;
 
-#if 0
-			TMR0L = 255-(VppPWMon>>4);		// timer0
-			INTCONbits.TMR0IF = 0;
-			T0CON = 0xC0; //prescaler div by 1:16
-			Pump2 = 1;
 #endif
-#endif
-			if( VppPWMon > 100 )
-			{					// (101-82) * 8 approx 100/2 * 3
-				TMR0L = 84 - VppPWMon;		// timer0 VppPWMon-82 counts
-				INTCONbits.TMR0IF = 0;
-				T0CON = 0xC2; //prescaler div by 1:8
-				Pump2 = 1;
-				Pump1 = 0;
-			}
-			else
+			if( VppPWMon >= History[0] )
+				History[0] = VppPWMon+1;
+#if 1
+			if( VppPWMon <= 100 )
 			{
 				unsigned char i;
 					
 				i = (VppPWMon>>1) + 1;
-				Pump1 = 0;
 				Pump2 = 1;
+				Pump1 = 0;
 				while( --i );
 				Pump2 = 0;
 				Pump1 = 1;
 			}
+			else
+			{					// (101-84) * 8 + interrupt latency approx 100/2 * 3
+				TMR0L = 84 - VppPWMon;		// timer0 VppPWMon-82 counts
+				INTCONbits.TMR0IF = 0;
+				T0CON = 0xC2; //On and prescaler div by 1:8
+				Pump2 = 1;
+				Pump1 = 0;
+			}
+#endif
 		}
 
 	}

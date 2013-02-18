@@ -303,7 +303,7 @@ PicType PicType::LoadPiklabXMLFile(const wxString& fileName)
 	p.ConfigAddressHexfile = 0; //not always in the xml file, let's make it 0 for safety.
 	
     if (!doc.Load(fileName))
-        {cout<<"could not loade fileName"<<endl;return UPP_INVALID_PIC;}
+        {cout<<"could not load fileName"<<endl;return UPP_INVALID_PIC;}
     if (doc.GetRoot()->GetName() != ("device"))
         {cout<<"name differs from Device"<<endl;return UPP_INVALID_PIC;}
 
@@ -511,7 +511,7 @@ PicType PicType::LoadPiklabXMLFile(const wxString& fileName)
                 p.Package.push_back(pkg);
             }
         }
-		else if (child->GetName() == ("checksums"))
+        else if (child->GetName() == ("checksums"))
         {
             wxXmlNode *checksumsNode = child->GetChildren();
             while (checksumsNode)

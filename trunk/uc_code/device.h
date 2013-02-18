@@ -32,7 +32,13 @@ typedef enum _PICTYPE {
 	UPP_INVALID_PICTYPE
 }PICTYPE;
 #undef LIST
-
+typedef enum _VPP_VOLT {
+	VPP_3_3V,
+	VPP_5V,
+	VPP_8_5V,
+	VPP_11V,
+	VPP_13V
+}VPP_VOLT;
 typedef struct {
 	void (*enter_ISCP)( void );
 	void (*bulk_erase)(unsigned char doRestore);
@@ -44,6 +50,7 @@ typedef struct {
 	struct {
 		PICTYPE type:7;
 		unsigned p3_3V:1;
+		VPP_VOLT vpp:3;
 		PICFAMILY family:5;
 		 }flags;
 } DEVICE_t;
